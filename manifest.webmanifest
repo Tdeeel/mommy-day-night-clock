@@ -1,0 +1,9 @@
+{
+  "name": "Grandma's Day & Night Clock",
+  "short_name": "Day Clock",
+  "start_url": "./",
+  "display": "fullscreen",
+  "background_color": "#05070b",
+  "theme_color": "#05070b",
+  "description": "A clear full-screen day and night clock."
+}

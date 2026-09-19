@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070b">
+  <meta name="description" content="A clear full-screen day and night clock.">
+  <title>Grandma's Day & Night Clock</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2305070b'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%23f8c64b' stroke-width='5'/%3E%3Cpath d='M32 19v14l10 6' fill='none' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root { color-scheme: dark; --accent:#ffd15c; --muted:#b8c0cc; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; width:100%; min-height:100%; background:#05070b; overflow:hidden; }
+    body { font-family:Arial,Helvetica,sans-serif; color:#fff; }
+    button,select { font:inherit; }
+    .clock { min-height:100dvh; display:grid; place-items:center; padding:clamp(18px,4vw,64px); text-align:center; position:relative; }
+    .stack { width:min(1200px,96vw); display:flex; flex-direction:column; align-items:center; }
+    .day { font-size:clamp(3rem,9vw,8rem); line-height:.95; font-weight:900; letter-spacing:.015em; text-transform:uppercase; }
+    .period { margin-top:clamp(12px,2vh,24px); font-size:clamp(2rem,5vw,4.5rem); line-height:1; font-weight:800; color:var(--accent); text-transform:uppercase; }
+    .daynight { margin-top:clamp(12px,2vh,22px); padding:.22em .65em; border:3px solid currentColor; border-radius:999px; font-size:clamp(1.25rem,2.8vw,2.5rem); font-weight:800; letter-spacing:.02em; }
+    .time-row { display:flex; align-items:flex-end; justify-content:center; gap:clamp(10px,2vw,24px); margin:clamp(12px,2vh,24px) 0; white-space:nowrap; }
+    .time { font-size:clamp(6rem,23vw,18rem); line-height:.8; font-weight:900; letter-spacing:-.06em; font-variant-numeric:tabular-nums; }
+    .ampm { font-size:clamp(2rem,5vw,5rem); line-height:.9; font-weight:900; padding-bottom:.08em; }
+    .date { font-size:clamp(2rem,5.4vw,5rem); line-height:1.05; font-weight:800; text-transform:uppercase; }
+    .hint { position:fixed; right:14px; bottom:12px; color:#7c8490; font-size:14px; opacity:.4; }
+    .corner { position:fixed; inset:0 auto auto 0; width:72px; height:72px; border:0; background:transparent; cursor:pointer; }
+    .controls { position:fixed; inset:0; display:grid; place-items:center; padding:20px; background:rgba(0,0,0,.78); backdrop-filter:blur(12px); z-index:10; }
+    .controls[hidden] { display:none; }
+    .panel { width:min(520px,100%); background:#151922; border:1px solid #3c4554; border-radius:24px; padding:28px; text-align:left; box-shadow:0 24px 80px #000; }
+    .panel h1 { margin:0 0 8px; font-size:2rem; }
+    .panel p { margin:0 0 24px; color:#c8ced7; line-height:1.45; }
+    .actions { display:grid; gap:12px; }
+    .actions button,.actions select { width:100%; min-height:54px; border-radius:14px; border:1px solid #566173; background:#232a36; color:#fff; padding:12px 16px; font-weight:700; cursor:pointer; }
+    .actions button.primary { background:#ffd15c; color:#111; border-color:#ffd15c; }
+    label { font-weight:700; display:grid; gap:8px; }
+    .status { min-height:1.5em; margin-top:12px!important; color:#ffd15c!important; }
+    @media (max-height:620px) {
+      .clock { padding:14px; }
+      .period,.daynight { margin-top:8px; }
+      .time-row { margin:10px 0; }
+      .time { font-size:clamp(5rem,21vh,10rem); }
+      .day { font-size:clamp(2.5rem,12vh,6rem); }
+      .date { font-size:clamp(1.8rem,7vh,3.5rem); }
+    }
+  </style>
+</head>
+<body>
+  <main class="clock" aria-live="polite">
+    <div class="stack">
+      <div class="day" id="day">SATURDAY</div>
+      <div class="period" id="period">EVENING</div>
+      <div class="daynight" id="daynight">IT IS NIGHTTIME</div>
+      <div class="time-row"><span class="time" id="time">7:00</span><span class="ampm" id="ampm">P.M.</span></div>
+      <div class="date" id="date">SEPTEMBER 19, 2026</div>
+    </div>
+    <button class="corner" id="corner" aria-label="Open clock settings"></button>
+    <div class="hint">Press S for settings</div>
+  </main>
+
+  <section class="controls" id="controls" hidden aria-label="Clock settings">
+    <div class="panel">
+      <h1>Clock settings</h1>
+      <p>Set this once, then leave the clock open. It uses the computer’s date and time.</p>
+      <div class="actions">
+        <button class="primary" id="fullscreen">Enter full screen</button>
+        <button id="awake">Keep screen awake</button>
+        <label>Time format
+          <select id="format"><option value="12">12-hour (7:30 P.M.)</option><option value="24">24-hour (19:30)</option></select>
+        </label>
+        <button id="close">Done</button>
+      </div>
+      <p class="status" id="status"></p>
+    </div>
+  </section>
+
+  <script>
+    const el = Object.fromEntries(['day','period','daynight','time','ampm','date','controls','format','status'].map(id=>[id,document.getElementById(id)]));
+    let wakeLock = null;
+    let hourFormat = localStorage.getItem('clock-format') || '12';
+    el.format.value = hourFormat;
+
+    function periodFor(hour) {
+      if (hour >= 5 && hour < 12) return ['MORNING','IT IS DAYTIME',true];
+      if (hour >= 12 && hour < 18) return ['AFTERNOON','IT IS DAYTIME',true];
+      if (hour >= 18 && hour < 21) return ['EVENING','IT IS NIGHTTIME',false];
+      return ['NIGHT','IT IS NIGHTTIME',false];
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const [period,daynight,isDay] = periodFor(now.getHours());
+      el.day.textContent = new Intl.DateTimeFormat('en-US',{weekday:'long'}).format(now);
+      el.period.textContent = period;
+      el.daynight.textContent = daynight;
+      el.date.textContent = new Intl.DateTimeFormat('en-US',{month:'long',day:'numeric',year:'numeric'}).format(now);
+      if (hourFormat === '24') {
+        el.time.textContent = new Intl.DateTimeFormat('en-US',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now);
+        el.ampm.textContent = '';
+      } else {
+        const parts = new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit',hour12:true}).formatToParts(now);
+        el.time.textContent = parts.filter(p=>p.type==='hour'||p.type==='minute'||p.type==='literal').map(p=>p.value).join('').trim();
+        el.ampm.textContent = (parts.find(p=>p.type==='dayPeriod')?.value || '').replace('AM','A.M.').replace('PM','P.M.');
+      }
+      document.documentElement.style.setProperty('--accent', isDay ? '#ffd15c' : '#8fc7ff');
+    }
+
+    function toggleSettings(show) { el.controls.hidden = !show; }
+    document.getElementById('corner').addEventListener('click',()=>toggleSettings(true));
+    document.getElementById('close').addEventListener('click',()=>toggleSettings(false));
+    document.addEventListener('keydown',e=>{ if(e.key.toLowerCase()==='s') toggleSettings(el.controls.hidden); if(e.key==='Escape') toggleSettings(false); });
+    el.format.addEventListener('change',()=>{ hourFormat=el.format.value; localStorage.setItem('clock-format',hourFormat); updateClock(); });
+    document.getElementById('fullscreen').addEventListener('click',async()=>{
+      try { if(!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); toggleSettings(false); }
+      catch { el.status.textContent='Full screen was blocked. Press F11 on Windows or Control–Command–F on Mac.'; }
+    });
+    document.getElementById('awake').addEventListener('click',async()=>{
+      try {
+        if(!('wakeLock' in navigator)) throw new Error();
+        wakeLock = await navigator.wakeLock.request('screen');
+        el.status.textContent='Screen will stay awake while this clock remains open.';
+      } catch { el.status.textContent='Set the computer display to never sleep while plugged in.'; }
+    });
+    document.addEventListener('visibilitychange',async()=>{ if(wakeLock && document.visibilityState==='visible') { try { wakeLock=await navigator.wakeLock.request('screen'); } catch {} } });
+    updateClock(); setInterval(updateClock,1000);
+    if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  </script>
+</body>
+</html>
