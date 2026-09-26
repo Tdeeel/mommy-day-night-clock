@@ -25,6 +25,8 @@
     .date { font-size:clamp(2rem,5.4vw,5rem); line-height:1.05; font-weight:800; text-transform:uppercase; }
     .caregiver { margin-top:clamp(16px,3vh,36px); padding:.3em .7em; border-top:2px solid #566173; font-size:clamp(1.7rem,4.5vw,4rem); line-height:1.15; font-weight:800; color:#fff; overflow-wrap:anywhere; }
     .caregiver[hidden] { display:none; }
+    .caregiver-detail { margin-top:.25em; font-size:clamp(1.1rem,2vw,1.8rem); color:var(--muted); }
+    .caregiver-detail:empty { display:none; }
     .hint { position:fixed; right:14px; bottom:12px; color:#7c8490; font-size:14px; opacity:.4; }
     .corner { position:fixed; inset:0 auto auto 0; width:72px; height:72px; border:0; background:transparent; cursor:pointer; }
     .controls { position:fixed; inset:0; display:grid; place-items:center; padding:20px; background:rgba(0,0,0,.78); backdrop-filter:blur(12px); z-index:10; }
@@ -55,7 +57,7 @@
       <div class="daynight" id="daynight">IT IS NIGHTTIME</div>
       <div class="time-row"><span class="time" id="time">7:00</span><span class="ampm" id="ampm">P.M.</span></div>
       <div class="date" id="date">SEPTEMBER 19, 2026</div>
-      <div class="caregiver" id="caregiver" hidden></div>
+      <div class="caregiver" id="caregiver" hidden><div id="caregiver-message"></div><div class="caregiver-detail" id="caregiver-detail"></div></div>
     </div>
     <button class="corner" id="corner" aria-label="Open clock settings"></button>
     <div class="hint">Press S for settings</div>
@@ -74,6 +76,12 @@
         <label>Caregiver here now
           <input id="caregiver-name" type="text" maxlength="60" placeholder="Name (for example, Tara)" autocomplete="off">
         </label>
+        <label>Time in
+          <input id="caregiver-in" type="time">
+        </label>
+        <label>Time out
+          <input id="caregiver-out" type="time">
+        </label>
         <button id="close">Done</button>
       </div>
       <p class="status" id="status"></p>
@@ -81,19 +89,62 @@
   </section>
 
   <script>
-    const el = Object.fromEntries(['day','period','daynight','time','ampm','date','caregiver','caregiver-name','controls','format','status'].map(id=>[id,document.getElementById(id)]));
+    const el = Object.fromEntries(['day','period','daynight','time','ampm','date','caregiver','caregiver-message','caregiver-detail','caregiver-name','caregiver-in','caregiver-out','controls','format','status'].map(id=>[id,document.getElementById(id)]));
     let wakeLock = null;
     let hourFormat = localStorage.getItem('clock-format') || '12';
     el.format.value = hourFormat;
-    const savedCaregiver = localStorage.getItem('clock-caregiver') || '';
-    el['caregiver-name'].value = savedCaregiver;
+    el['caregiver-name'].value = localStorage.getItem('clock-caregiver') || '';
+    el['caregiver-in'].value = localStorage.getItem('clock-caregiver-in') || '';
+    el['caregiver-out'].value = localStorage.getItem('clock-caregiver-out') || '';
+    if (!localStorage.getItem('clock-caregiver-date')) {
+      const now = new Date();
+      localStorage.setItem('clock-caregiver-date', [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-'));
+    }
+
+    function formatShiftTime(value) {
+      if (!value) return '';
+      const [hour, minute] = value.split(':').map(Number);
+      return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'A.M.' : 'P.M.'}`;
+    }
+
     function updateCaregiver() {
       const name = el['caregiver-name'].value.trim();
-      el.caregiver.hidden = !name;
-      el.caregiver.textContent = name ? `${name} IS HERE` : '';
+      const timeIn = el['caregiver-in'].value;
+      const timeOut = el['caregiver-out'].value;
       localStorage.setItem('clock-caregiver', name);
+      localStorage.setItem('clock-caregiver-in', timeIn);
+      localStorage.setItem('clock-caregiver-out', timeOut);
+      el.caregiver.hidden = !name;
+      if (!name) return;
+
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const [outHour, outMinute] = timeOut ? timeOut.split(':').map(Number) : [];
+      const outMinutes = outHour * 60 + outMinute;
+      const today = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-');
+      const savedDate = localStorage.getItem('clock-caregiver-date') || today;
+      const inMinutes = timeIn ? Number(timeIn.slice(0,2)) * 60 + Number(timeIn.slice(3)) : 0;
+      const overnight = timeIn && timeOut && inMinutes > outMinutes;
+      const savedDay = new Date(`${savedDate}T12:00:00`);
+      const elapsedDays = Math.round((new Date(`${today}T12:00:00`) - savedDay) / 86400000);
+      const expired = timeOut && (elapsedDays > (overnight ? 1 : 0) || (elapsedDays === (overnight ? 1 : 0) && currentMinutes >= outMinutes));
+      const stale = elapsedDays > 0 && !overnight;
+      el['caregiver-message'].textContent = (stale || expired) && !timeOut ? 'PLEASE CHECK WHO IS HERE NOW'
+        : stale || expired ? `${name}'S SCHEDULED TIME OUT WAS ${formatShiftTime(timeOut)}`
+        : timeOut ? `${name} IS HERE UNTIL ${formatShiftTime(timeOut)}` : `${name} IS HERE`;
+      el['caregiver-detail'].textContent = stale || expired
+        ? (timeOut ? 'PLEASE CHECK WHO IS HERE NOW' : '')
+        : timeIn ? `TIME IN: ${formatShiftTime(timeIn)}` : '';
     }
-    el['caregiver-name'].addEventListener('input', updateCaregiver);
+    for (const id of ['caregiver-name','caregiver-in','caregiver-out']) {
+      const onEdit = () => {
+        const now = new Date();
+        localStorage.setItem('clock-caregiver-date', [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-'));
+        updateCaregiver();
+      };
+      el[id].addEventListener('input', onEdit);
+      el[id].addEventListener('change', onEdit);
+    }
     updateCaregiver();
 
     function periodFor(hour) {
@@ -119,6 +170,7 @@
         el.ampm.textContent = (parts.find(p=>p.type==='dayPeriod')?.value || '').replace('AM','A.M.').replace('PM','P.M.');
       }
       document.documentElement.style.setProperty('--accent', isDay ? '#ffd15c' : '#8fc7ff');
+      updateCaregiver();
     }
 
     function toggleSettings(show) { el.controls.hidden = !show; }
