@@ -124,7 +124,12 @@
     function toggleSettings(show) { el.controls.hidden = !show; }
     document.getElementById('corner').addEventListener('click',()=>toggleSettings(true));
     document.getElementById('close').addEventListener('click',()=>toggleSettings(false));
-    document.addEventListener('keydown',e=>{ if(e.key.toLowerCase()==='s') toggleSettings(el.controls.hidden); if(e.key==='Escape') toggleSettings(false); });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { toggleSettings(false); return; }
+      const target = e.target;
+      const typing = target instanceof HTMLElement && (target.isContentEditable || ['INPUT','TEXTAREA','SELECT'].includes(target.tagName));
+      if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 's') toggleSettings(el.controls.hidden);
+    });
     el.format.addEventListener('change',()=>{ hourFormat=el.format.value; localStorage.setItem('clock-format',hourFormat); updateClock(); });
     document.getElementById('fullscreen').addEventListener('click',async()=>{
       try { if(!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); toggleSettings(false); }
