@@ -13,7 +13,7 @@
     * { box-sizing:border-box; }
     html,body { margin:0; width:100%; min-height:100%; background:#05070b; overflow:hidden; }
     body { font-family:Arial,Helvetica,sans-serif; color:#fff; }
-    button,select { font:inherit; }
+    button,select,input { font:inherit; }
     .clock { min-height:100dvh; display:grid; place-items:center; padding:clamp(18px,4vw,64px); text-align:center; position:relative; }
     .stack { width:min(1200px,96vw); display:flex; flex-direction:column; align-items:center; }
     .day { font-size:clamp(3rem,9vw,8rem); line-height:.95; font-weight:900; letter-spacing:.015em; text-transform:uppercase; }
@@ -23,6 +23,8 @@
     .time { font-size:clamp(6rem,23vw,18rem); line-height:.8; font-weight:900; letter-spacing:-.06em; font-variant-numeric:tabular-nums; }
     .ampm { font-size:clamp(2rem,5vw,5rem); line-height:.9; font-weight:900; padding-bottom:.08em; }
     .date { font-size:clamp(2rem,5.4vw,5rem); line-height:1.05; font-weight:800; text-transform:uppercase; }
+    .caregiver { margin-top:clamp(16px,3vh,36px); padding:.3em .7em; border-top:2px solid #566173; font-size:clamp(1.7rem,4.5vw,4rem); line-height:1.15; font-weight:800; color:#fff; overflow-wrap:anywhere; }
+    .caregiver[hidden] { display:none; }
     .hint { position:fixed; right:14px; bottom:12px; color:#7c8490; font-size:14px; opacity:.4; }
     .corner { position:fixed; inset:0 auto auto 0; width:72px; height:72px; border:0; background:transparent; cursor:pointer; }
     .controls { position:fixed; inset:0; display:grid; place-items:center; padding:20px; background:rgba(0,0,0,.78); backdrop-filter:blur(12px); z-index:10; }
@@ -31,7 +33,7 @@
     .panel h1 { margin:0 0 8px; font-size:2rem; }
     .panel p { margin:0 0 24px; color:#c8ced7; line-height:1.45; }
     .actions { display:grid; gap:12px; }
-    .actions button,.actions select { width:100%; min-height:54px; border-radius:14px; border:1px solid #566173; background:#232a36; color:#fff; padding:12px 16px; font-weight:700; cursor:pointer; }
+    .actions button,.actions select,.actions input { width:100%; min-height:54px; border-radius:14px; border:1px solid #566173; background:#232a36; color:#fff; padding:12px 16px; font-weight:700; cursor:pointer; }
     .actions button.primary { background:#ffd15c; color:#111; border-color:#ffd15c; }
     label { font-weight:700; display:grid; gap:8px; }
     .status { min-height:1.5em; margin-top:12px!important; color:#ffd15c!important; }
@@ -53,6 +55,7 @@
       <div class="daynight" id="daynight">IT IS NIGHTTIME</div>
       <div class="time-row"><span class="time" id="time">7:00</span><span class="ampm" id="ampm">P.M.</span></div>
       <div class="date" id="date">SEPTEMBER 19, 2026</div>
+      <div class="caregiver" id="caregiver" hidden></div>
     </div>
     <button class="corner" id="corner" aria-label="Open clock settings"></button>
     <div class="hint">Press S for settings</div>
@@ -68,6 +71,9 @@
         <label>Time format
           <select id="format"><option value="12">12-hour (7:30 P.M.)</option><option value="24">24-hour (19:30)</option></select>
         </label>
+        <label>Caregiver here now
+          <input id="caregiver-name" type="text" maxlength="60" placeholder="Name (for example, Tara)" autocomplete="off">
+        </label>
         <button id="close">Done</button>
       </div>
       <p class="status" id="status"></p>
@@ -75,10 +81,20 @@
   </section>
 
   <script>
-    const el = Object.fromEntries(['day','period','daynight','time','ampm','date','controls','format','status'].map(id=>[id,document.getElementById(id)]));
+    const el = Object.fromEntries(['day','period','daynight','time','ampm','date','caregiver','caregiver-name','controls','format','status'].map(id=>[id,document.getElementById(id)]));
     let wakeLock = null;
     let hourFormat = localStorage.getItem('clock-format') || '12';
     el.format.value = hourFormat;
+    const savedCaregiver = localStorage.getItem('clock-caregiver') || '';
+    el['caregiver-name'].value = savedCaregiver;
+    function updateCaregiver() {
+      const name = el['caregiver-name'].value.trim();
+      el.caregiver.hidden = !name;
+      el.caregiver.textContent = name ? `${name} IS HERE` : '';
+      localStorage.setItem('clock-caregiver', name);
+    }
+    el['caregiver-name'].addEventListener('input', updateCaregiver);
+    updateCaregiver();
 
     function periodFor(hour) {
       if (hour >= 5 && hour < 12) return ['MORNING','IT IS DAYTIME',true];
