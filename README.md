@@ -18,7 +18,7 @@ The root files are a progressive web app:
 - `manifest.webmanifest` — installable-app settings
 - `sw.js` — offline caching
 
-Open `index.html` through a web server or publish the repository with GitHub Pages. Press **S** to open the clock settings. Enter the current caregiver's name under **Caregiver here now**. The clock shows **NAME IS HERE** beneath the date and remembers the name on that computer. Clear the field when no caregiver is present.
+Open `index.html` through a web server or publish the repository with GitHub Pages. Press **S** to open the clock settings. Enter the current caregiver's name under **Caregiver here now**. Set the caregiver's time in and time out. The clock shows **NAME IS HERE UNTIL TIME** beneath the date, with **TIME IN** below it, and remembers the entries on that computer. After the scheduled time out, it prompts you to check who is present. Update the name and times for each shift; clear the name when no caregiver is present.
 
 The existing Windows `.exe` is a separate native build and does not yet include the caregiver line.
 
