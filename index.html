@@ -27,11 +27,11 @@
     .caregiver[hidden] { display:none; }
     .caregiver-detail { margin-top:.25em; font-size:clamp(1.1rem,2vw,1.8rem); color:var(--muted); }
     .caregiver-detail:empty { display:none; }
-    .hint { position:fixed; right:14px; bottom:12px; color:#7c8490; font-size:14px; opacity:.4; }
-    .corner { position:fixed; inset:0 auto auto 0; width:72px; height:72px; border:0; background:transparent; cursor:pointer; }
-    .controls { position:fixed; inset:0; display:grid; place-items:center; padding:20px; background:rgba(0,0,0,.78); backdrop-filter:blur(12px); z-index:10; }
+    .settings-trigger { position:fixed; top:max(12px, env(safe-area-inset-top)); left:max(12px, env(safe-area-inset-left)); z-index:2; min-width:96px; min-height:48px; padding:10px 14px; border:1px solid #6a7585; border-radius:12px; background:#1c2533; color:#fff; font-size:16px; font-weight:700; cursor:pointer; }
+    .settings-trigger:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+    .controls { position:fixed; inset:0; display:grid; place-items:center; padding:20px; overflow-y:auto; background:rgba(0,0,0,.78); backdrop-filter:blur(12px); z-index:10; }
     .controls[hidden] { display:none; }
-    .panel { width:min(520px,100%); background:#151922; border:1px solid #3c4554; border-radius:24px; padding:28px; text-align:left; box-shadow:0 24px 80px #000; }
+    .panel { max-height:calc(100dvh - 40px); overflow-y:auto; width:min(520px,100%); background:#151922; border:1px solid #3c4554; border-radius:24px; padding:28px; text-align:left; box-shadow:0 24px 80px #000; }
     .panel h1 { margin:0 0 8px; font-size:2rem; }
     .panel p { margin:0 0 24px; color:#c8ced7; line-height:1.45; }
     .actions { display:grid; gap:12px; }
@@ -59,8 +59,7 @@
       <div class="date" id="date">SEPTEMBER 19, 2026</div>
       <div class="caregiver" id="caregiver" hidden><div id="caregiver-message"></div><div class="caregiver-detail" id="caregiver-detail"></div></div>
     </div>
-    <button class="corner" id="corner" aria-label="Open clock settings"></button>
-    <div class="hint">Press S for settings</div>
+    <button class="settings-trigger" id="corner" type="button" aria-label="Open clock settings" aria-controls="controls">Settings</button>
   </main>
 
   <section class="controls" id="controls" hidden aria-label="Clock settings">
