@@ -23,6 +23,8 @@
     .time { font-size:clamp(6rem,23vw,18rem); line-height:.8; font-weight:900; letter-spacing:-.06em; font-variant-numeric:tabular-nums; }
     .ampm { font-size:clamp(2rem,5vw,5rem); line-height:.9; font-weight:900; padding-bottom:.08em; }
     .date { font-size:clamp(2rem,5.4vw,5rem); line-height:1.05; font-weight:800; text-transform:uppercase; }
+    .location { margin-top:clamp(12px,2.5vh,28px); font-size:clamp(1.5rem,3.8vw,3.4rem); line-height:1.15; font-weight:800; color:var(--accent); overflow-wrap:anywhere; }
+    .location[hidden] { display:none; }
     .caregiver { margin-top:clamp(16px,3vh,36px); padding:.3em .7em; border-top:2px solid #566173; font-size:clamp(1.7rem,4.5vw,4rem); line-height:1.15; font-weight:800; color:#fff; overflow-wrap:anywhere; }
     .caregiver[hidden] { display:none; }
     .caregiver-detail { margin-top:.25em; font-size:clamp(1.1rem,2vw,1.8rem); color:var(--muted); }
@@ -57,6 +59,7 @@
       <div class="daynight" id="daynight">IT IS NIGHTTIME</div>
       <div class="time-row"><span class="time" id="time">7:00</span><span class="ampm" id="ampm">P.M.</span></div>
       <div class="date" id="date">SEPTEMBER 19, 2026</div>
+      <div class="location" id="location" hidden></div>
       <div class="caregiver" id="caregiver" hidden><div id="caregiver-message"></div><div class="caregiver-detail" id="caregiver-detail"></div></div>
     </div>
     <button class="settings-trigger" id="corner" type="button" aria-label="Open clock settings" aria-controls="controls">Settings</button>
@@ -71,6 +74,9 @@
         <button id="awake">Keep screen awake</button>
         <label>Time format
           <select id="format"><option value="12">12-hour (7:30 P.M.)</option><option value="24">24-hour (19:30)</option></select>
+        </label>
+        <label>Where are we?
+          <input id="location-name" type="text" maxlength="100" placeholder="For example, Home in Dumaguete" autocomplete="off">
         </label>
         <label>Caregiver here now
           <input id="caregiver-name" type="text" maxlength="60" placeholder="Name (for example, Tara)" autocomplete="off">
@@ -88,10 +94,19 @@
   </section>
 
   <script>
-    const el = Object.fromEntries(['day','period','daynight','time','ampm','date','caregiver','caregiver-message','caregiver-detail','caregiver-name','caregiver-in','caregiver-out','controls','format','status'].map(id=>[id,document.getElementById(id)]));
+    const el = Object.fromEntries(['day','period','daynight','time','ampm','date','location','location-name','caregiver','caregiver-message','caregiver-detail','caregiver-name','caregiver-in','caregiver-out','controls','format','status'].map(id=>[id,document.getElementById(id)]));
     let wakeLock = null;
     let hourFormat = localStorage.getItem('clock-format') || '12';
     el.format.value = hourFormat;
+    el['location-name'].value = localStorage.getItem('clock-location') || '';
+    function updateLocation() {
+      const place = el['location-name'].value.trim();
+      localStorage.setItem('clock-location', place);
+      el.location.hidden = !place;
+      el.location.textContent = place ? `YOU ARE AT ${place.toLocaleUpperCase()}` : '';
+    }
+    el['location-name'].addEventListener('input', updateLocation);
+    updateLocation();
     el['caregiver-name'].value = localStorage.getItem('clock-caregiver') || '';
     el['caregiver-in'].value = localStorage.getItem('clock-caregiver-in') || '';
     el['caregiver-out'].value = localStorage.getItem('clock-caregiver-out') || '';
